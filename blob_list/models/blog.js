@@ -14,5 +14,14 @@ const blogSchema = new mongoose.Schema({
   likes: Number
 })
 
+blogSchema.set('toJSON', {
+  transform: (document, returnedObject) => {
+    // Even though the _id property of Mongoose objects looks like a string, it is in fact an object.
+    returnedObject.id = returnedObject._id.toString()
+    delete returnedObject._id
+    delete returnedObject.__v
+  }
+})
+
 //If you define a model with the name Person, mongoose will automatically name the associated collection as people.
 module.exports = mongoose.model('Blog', blogSchema)

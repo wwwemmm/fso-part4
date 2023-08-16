@@ -9,15 +9,16 @@ const Blog = require('../models/blog')
 beforeEach(async () => {
   await Blog.deleteMany({})
 
-  let blogObject = new Blog(helper.initialBlogs[0])
-  await blogObject.save()
-
-  blogObject = new Blog(helper.initialBlogs[1])
-  await blogObject.save()
+  for (let blog of helper.initialBlogs) {
+    let blogObject = new Blog(blog)
+    await blogObject.save()
+  }
+  //console.log('done')
 })
 
 // supertest takes care that the application being tested is started at the port that it uses internally.
 test('blogs are returned as json', async () => {
+  //console.log('entered test')
   await api
     .get('/api/blogs')
     .expect(200)
@@ -26,16 +27,24 @@ test('blogs are returned as json', async () => {
 
 test('all blogs are returned', async () => {
   const response = await api.get('/api/blogs')
-
   expect(response.body).toHaveLength(helper.initialBlogs.length)
 })
 
-test('a specific blog is within the returned notes', async () => {
+test('a specific blog is within the returned blogs', async () => {
   const response = await api.get('/api/blogs')
   const titles = response.body.map(r => r.title)
   expect(titles).toContain(
     'React patterns'
   )
+},200000)
+
+test('the unique identifier property of the blog posts is named id', async () => {
+  const blogsAtEnd = await helper.blogsInDb()
+  const id = blogsAtEnd.map((r) => {
+    expect(r.id).toBeDefined()
+    return r.title})
+
+  expect(new Set(id).size).toBe(id.length)
 },200000)
 
 test('a valid blog can be added', async () => {
