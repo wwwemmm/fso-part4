@@ -28,9 +28,11 @@ app.use(express.json())
 
 
 app.use(morgan(middleware.morganFormat, { postBody: middleware.customPostBodyToken }))
+app.use(middleware.tokenExtractor)
+app.use('/api/login', loginRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/blogs', blogsRouter)
-app.use('/api/login', loginRouter)
+
 
 app.use(middleware.unknownEndpoint)
 // this has to be the last loaded middleware.

@@ -28,9 +28,26 @@ const errorHandler = (error, request, response, next) => {
   next(error)
 }
 
+
+const getTokenFrom = request => {
+  const authorization = request.get('authorization')
+  if (authorization && authorization.startsWith('Bearer ')) {
+    return authorization.replace('Bearer ', '')
+  }
+  return null
+}
+
+const tokenExtractor = (request, response, next) => {
+  // code that extracts the token
+  const token = getTokenFrom(request)
+  request.token = token
+  next()
+}
+
 module.exports = {
   morganFormat,
   customPostBodyToken: 'post-body',
   unknownEndpoint,
-  errorHandler
+  errorHandler,
+  tokenExtractor
 }
