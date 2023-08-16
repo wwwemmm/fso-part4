@@ -143,7 +143,7 @@ test('blog without url is not added', async () => {
   expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
 },200000)
 
-test('a blog can be deleted by iD', async () => {
+test('a blog can be deleted by id', async () => {
   const blogsAtStart = await helper.blogsInDb()
   const blogToDelete = blogsAtStart[0]
 
@@ -171,6 +171,33 @@ test('a blog can be deleted by iD', async () => {
       'likes':blogToDelete.likes
     }
   )
+},200000)
+
+test('a blog can be update', async () => {
+  const blogsAtStart = await helper.blogsInDb()
+  const blogToUpdate = blogsAtStart[0]
+
+  const blogInUpdate = {
+    'title': blogToUpdate.title,
+    'author': blogToUpdate.author,
+    'url':'Unknown',
+    'likes':blogToUpdate.likes + 100
+  }
+
+  await api
+    .put(`/api/blogs/${blogToUpdate.id}`)
+    .send(blogInUpdate)
+    .expect(200)
+
+  const blogsAtEnd = await helper.blogsInDb()
+  expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+  const blogAfterUpdate = blogsAtEnd[0]
+
+  expect(blogAfterUpdate.id).toBe(blogToUpdate.id)
+  expect(blogAfterUpdate.title).toBe(blogToUpdate.title)
+  expect(blogAfterUpdate.author).toBe(blogToUpdate.author)
+  expect(blogAfterUpdate.url).toBe('Unknown')
+  expect(blogAfterUpdate.likes).toBe(blogToUpdate.likes + 100)
 },200000)
 
 afterAll(async () => {
