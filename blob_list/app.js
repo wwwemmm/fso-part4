@@ -1,6 +1,8 @@
 // config should be imported before the Person model is imported.
 const config = require('./utils/config')
 const express = require('express')
+//introduce 'express-async-errors' before you import your route in app.js
+require('express-async-errors')
 const app = express()
 const cors = require('cors')
 const blogsRouter = require('./controllers/blogs')
