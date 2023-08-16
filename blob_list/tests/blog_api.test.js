@@ -55,9 +55,17 @@ test('a valid blog can be added', async () => {
   const blogsAtEnd = await helper.blogsInDb()
   expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
 
-  const titles = blogsAtEnd.map(r => r.title)
-  expect(titles).toContain(
-    'Canonical string reduction'
+  const blogsAfterMap = blogsAtEnd.map((r) => {
+    return ({
+      'title':r.title,
+      'author':r.author,
+      'url':r.url,
+      'likes':r.likes
+    })
+  })
+
+  expect(blogsAfterMap).toContainEqual(
+    newBlog
   )
 },200000)
 
@@ -77,9 +85,20 @@ test('if likes property is missing, it will default to the value 0', async () =>
   const blogsAtEnd = await helper.blogsInDb()
   expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
 
-  const likes = blogsAtEnd.map(r => r.likes)
-  expect(likes).toContain(
-    0
+  const blogsAfterMap = blogsAtEnd.map((r) => {
+    return ({
+      'title':r.title,
+      'author':r.author,
+      'url':r.url,
+      'likes':r.likes
+    })
+  })
+
+  expect(blogsAfterMap).toContainEqual(
+    {
+      ...newBlog,
+      'likes':0
+    }
   )
 },200000)
 
