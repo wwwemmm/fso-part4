@@ -38,6 +38,17 @@ beforeEach(async () => {
   }
 }, 200000)
 
+describe('having unique id', () => {
+  test('the unique identifier property of the blog posts is named id', async () => {
+    const blogsAtEnd = await helper.blogsInDb()
+    const id = blogsAtEnd.map((r) => {
+      expect(r.id).toBeDefined()
+      return r.title})
+
+    expect(new Set(id).size).toBe(id.length)
+  },200000)
+})
+
 describe('two users and two blogs at the start', () => {
 
   test('two users', async () => {
@@ -269,7 +280,6 @@ describe('when user have right token and add blogs', () => {
     const result = await api
       .post('/api/login')
       .send(user)
-      .expect(200)
     console.log(result.body.token)
     return result.body.token
   }
@@ -388,7 +398,6 @@ describe('when user have right token then delete or updata a blog', () => {
     const result = await api
       .post('/api/login')
       .send(user)
-      .expect(200)
     console.log(result.body.token)
     return result.body.token
   }
@@ -425,7 +434,7 @@ describe('when user have right token then delete or updata a blog', () => {
     )
   },200000)
 
-  test.only('a blog can be update', async () => {
+  test('a blog can be update', async () => {
     const token = await getToken()
     const blogsAtStart = await helper.blogsInDb()
     const blogToUpdate = blogsAtStart[0]
@@ -455,6 +464,124 @@ describe('when user have right token then delete or updata a blog', () => {
   },200000)
 })
 
+describe('when user don\'t have token, cann\'t add, delete or update blogs', () => {
+
+  test('a blog can\'t add', async () => {
+    //const token = await getToken()
+    const blogsAtStart = await helper.blogsInDb()
+    const newBlog = {
+      title: 'Canonical string reduction',
+      author: 'Edsger W. Dijkstra',
+      url: 'http://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD808.html',
+    }
+
+    const result = await api
+      .post('/api/blogs')
+      //.set('authorization', `Bearer ${token}`)
+      .send(newBlog)
+      .expect(401)
+      .expect('Content-Type', /application\/json/)
+
+    expect(result.body.error).toContain('lack of token')
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toEqual(blogsAtStart)
+  },200000)
+
+  test('a blog can not be deleted without token', async () => {
+    //const token = await getToken()
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToDelete = blogsAtStart[0]
+
+    const result = await api
+      .delete(`/api/blogs/${blogToDelete.id}`)
+      .expect(401)
+
+    expect(result.body.error).toContain('lack of token')
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtStart.length).toEqual(blogsAtEnd.length)
+
+  },200000)
+
+  test('a blog can not be update without token', async () => {
+    //const token = await getToken()
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToUpdate = blogsAtStart[0]
+
+    const blogInUpdate = {
+      'title': blogToUpdate.title,
+      'author': blogToUpdate.author,
+      'url':'Unknown',
+      'likes':blogToUpdate.likes + 100
+    }
+
+    const result = await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(blogInUpdate)
+      //.set('authorization', `Bearer ${token}`)
+      .expect(401)
+
+    expect(result.body.error).toContain('lack of token')
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtStart.length).toEqual(blogsAtEnd.length)
+    expect(blogsAtEnd).toEqual(blogsAtStart)
+  },200000)
+
+})
+
+describe('when user have wrong token, cann\'t delete or update blogs', () => {
+  const getToken = async () => {
+    const user = {
+      'username': 'root',
+      'password': 'sekret'
+    }
+    const result = await api
+      .post('/api/login')
+      .send(user)
+    console.log(result.body.token)
+    return result.body.token
+  }
+
+  test('a blog can not be deleted without token', async () => {
+    const token = await getToken()
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToDelete = blogsAtStart[0]
+
+    const result = await api
+      .delete(`/api/blogs/${blogToDelete.id}`)
+      .set('authorization', `Bearer ${token}`)
+      .expect(401)
+
+    expect(result.body.error).toContain('token don\'t have right to delete the blog')
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtStart.length).toEqual(blogsAtEnd.length)
+
+  },200000)
+
+  test('a blog can not be update without token', async () => {
+    const token = await getToken()
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToUpdate = blogsAtStart[0]
+
+    const blogInUpdate = {
+      'title': blogToUpdate.title,
+      'author': blogToUpdate.author,
+      'url':'Unknown',
+      'likes':blogToUpdate.likes + 100
+    }
+
+    const result = await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(blogInUpdate)
+      .set('authorization', `Bearer ${token}`)
+      .expect(401)
+
+    expect(result.body.error).toContain('token don\'t have right to update the blog')
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtStart.length).toEqual(blogsAtEnd.length)
+    expect(blogsAtEnd).toEqual(blogsAtStart)
+  },200000)
+
+})
 
 afterAll(async () => {
   await mongoose.connection.close()

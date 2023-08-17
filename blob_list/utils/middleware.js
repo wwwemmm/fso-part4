@@ -48,6 +48,9 @@ const tokenExtractor = (request, response, next) => {
 
 const userExtractor = async (request, response, next) => {
   // code that extracts the token
+  if (!request.token) {
+    return response.status(401).json({ error: 'lack of token' })
+  }
   const decodedToken = jwt.verify(request.token, process.env.SECRET)
   if (!decodedToken.id) {
     return response.status(401).json({ error: 'token invalid' })
@@ -57,6 +60,7 @@ const userExtractor = async (request, response, next) => {
   //console.log('id: ', request.user.id)
   next()
 }
+
 
 module.exports = {
   morganFormat,

@@ -1,9 +1,6 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
-const jwt = require('jsonwebtoken')
 const middleware = require('../utils/middleware')
-const User = require('../models/user')
-
 blogsRouter.get('/', async (request, response) => {
   //The functionality of the populate method of Mongoose is based on the fact that
   //we have defined "types" to the references in the Mongoose schema with the ref option:
