@@ -57,18 +57,24 @@ blogsRouter.delete('/:id', middleware.userExtractor, async (request, response) =
   }
 })
 
-blogsRouter.put('/:id',async (request, response) => {
+blogsRouter.put('/:id', middleware.userExtractor, async (request, response) => {
+  const user = request.user
   const body = request.body
+  const blog = await Blog.findById(request.params.id)
 
-  const blog = {
-    title: body.title,
-    author: body.author,
-    url: body.url,
-    likes: body.likes|| 0
+  if ( blog.user.toString() === user.id.toString() ) {
+    const blog = {
+      title: body.title,
+      author: body.author,
+      url: body.url,
+      likes: body.likes|| 0,
+      user: user.id }
+    const updatedBlog = await Blog.findByIdAndUpdate(request.params.id, blog, { new: true })
+    response.json(updatedBlog)
+  } else {
+    return response.status(401).json({ error: 'token don\'t have right to update the blog' })
   }
 
-  const updatedBlog = await Blog.findByIdAndUpdate(request.params.id, blog, { new: true })
-  response.json(updatedBlog)
 })
 
 module.exports = blogsRouter

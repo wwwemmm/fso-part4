@@ -260,7 +260,7 @@ describe('user login', () => {
   },200000)
 })
 
-describe('when user have right token', () => {
+describe('when user have right token and add blogs', () => {
   const getToken = async () => {
     const user = {
       'username': 'mluukkai',
@@ -273,6 +273,7 @@ describe('when user have right token', () => {
     console.log(result.body.token)
     return result.body.token
   }
+
   test('a valid blog can be added', async () => {
     const token = await getToken()
     const newBlog = {
@@ -378,15 +379,28 @@ describe('when user have right token', () => {
 
 })
 
+describe('when user have right token then delete or updata a blog', () => {
+  const getToken = async () => {
+    const user = {
+      'username': 'mluukkai',
+      'password': 'salainen'
+    }
+    const result = await api
+      .post('/api/login')
+      .send(user)
+      .expect(200)
+    console.log(result.body.token)
+    return result.body.token
+  }
 
-/*
-describe('delete or updata a blog', () => {
-  test('a blog can be deleted with right token', async () => {
+  test('a blog can be deleted', async () => {
+    const token = await getToken()
     const blogsAtStart = await helper.blogsInDb()
     const blogToDelete = blogsAtStart[0]
 
     await api
       .delete(`/api/blogs/${blogToDelete.id}`)
+      .set('authorization', `Bearer ${token}`)
       .expect(204)
 
     const blogsAtEnd = await helper.blogsInDb()
@@ -411,7 +425,8 @@ describe('delete or updata a blog', () => {
     )
   },200000)
 
-  test('a blog can be update', async () => {
+  test.only('a blog can be update', async () => {
+    const token = await getToken()
     const blogsAtStart = await helper.blogsInDb()
     const blogToUpdate = blogsAtStart[0]
 
@@ -425,6 +440,7 @@ describe('delete or updata a blog', () => {
     await api
       .put(`/api/blogs/${blogToUpdate.id}`)
       .send(blogInUpdate)
+      .set('authorization', `Bearer ${token}`)
       .expect(200)
 
     const blogsAtEnd = await helper.blogsInDb()
@@ -438,7 +454,8 @@ describe('delete or updata a blog', () => {
     expect(blogAfterUpdate.likes).toBe(blogToUpdate.likes + 100)
   },200000)
 })
-*/
+
+
 afterAll(async () => {
   await mongoose.connection.close()
 })
