@@ -4,7 +4,7 @@ const User = require('../models/user')
 const jwt = require('jsonwebtoken')
 
 blogsRouter.get('/', async (request, response) => {
-  //The functionality of the populate method of Mongoose is based on the fact that 
+  //The functionality of the populate method of Mongoose is based on the fact that
   //we have defined "types" to the references in the Mongoose schema with the ref option:
   const blogs = await Blog.find({}).populate('user', { username: 1, name: 1 })
   response.json(blogs)
@@ -33,8 +33,19 @@ blogsRouter.post('/', async (request, response) => {
 })
 
 blogsRouter.delete('/:id', async (request, response) => {
-  await Blog.findByIdAndRemove(request.params.id)
-  response.status(204).end()
+  const decodedToken = jwt.verify(request.token, process.env.SECRET)
+
+  const blog = await Blog.findById(request.params.id)
+  if (!decodedToken.id) {
+    return response.status(401).json({ error: 'token invalid' })
+  }
+  //NB: blog.user is not string, but a object
+  if ( blog.user.toString() === decodedToken.id.toString() ) {
+    await Blog.findByIdAndRemove(request.params.id)
+    return response.status(204).end()
+  } else {
+    return response.status(401).json({ error: 'token don\'t have right to delete the blog' })
+  }
 })
 
 blogsRouter.put('/:id',async (request, response) => {

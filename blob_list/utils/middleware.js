@@ -44,10 +44,18 @@ const tokenExtractor = (request, response, next) => {
   next()
 }
 
+const userExtractor = (request, response, next) => {
+  // code that extracts the token
+  const token = getTokenFrom(request)
+  request.token = token
+  next()
+}
+
 module.exports = {
   morganFormat,
   customPostBodyToken: 'post-body',
   unknownEndpoint,
   errorHandler,
-  tokenExtractor
+  tokenExtractor,
+  userExtractor
 }

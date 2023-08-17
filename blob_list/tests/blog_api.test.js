@@ -16,7 +16,7 @@ beforeEach(async () => {
   //console.log('done')
 })
 
-describe('when there is initially some notes saved', () => {
+describe('when there is initially some blogs saved', () => {
   // supertest takes care that the application being tested is started at the port that it uses internally.
   test('blogs are returned as json', async () => {
     //console.log('entered test')

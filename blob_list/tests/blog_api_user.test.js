@@ -6,16 +6,81 @@ const helper = require('./test_helper')
 
 const bcrypt = require('bcrypt')
 const User = require('../models/user')
-
+const Blog = require('../models/blog')
 //...
 
 beforeEach(async () => {
   await User.deleteMany({})
+  await Blog.deleteMany({})
+  for (let user of helper.initialUsers) {
+    const passwordHash = await bcrypt.hash(user.password, 10)
+    const newUser = new User({
+      username:user.username,
+      name:user.name,
+      passwordHash:passwordHash,
+      blogs:[]
+    })
+    await newUser.save()
+  }
 
-  const passwordHash = await bcrypt.hash('sekret', 10)
-  const user = new User({ username: 'root', passwordHash })
+  for (let blog of helper.initialBlogs) {
+    const user = await User.findOne({ username: 'mluukkai' })
+    const newBlog = new Blog({
+      title: blog.title,
+      author: blog.author,
+      url: blog.url,
+      likes: blog.likes,
+      user: user._id
+    })
+    const savedBlog = await newBlog.save()
+    user.blogs = user.blogs.concat(savedBlog._id)
+    await user.save()
+  }
+}, 200000)
 
-  await user.save()
+describe('two users and two blogs at the start', () => {
+
+  test('two users', async () => {
+    const usersAtStart = await helper.usersInDb()
+    expect(usersAtStart).toHaveLength(helper.initialUsers.length)
+    expect(helper.initialUsers[1].username).toEqual(usersAtStart[1].username)
+  },200000)
+
+  test('two blogs', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    expect(blogsAtStart).toHaveLength(helper.initialBlogs.length)
+    expect(helper.initialBlogs[1].title).toEqual(blogsAtStart[1].title)
+  },200000)
+
+  test('the second users have two blogs', async () => {
+    const usersAtStart = await helper.usersInDb()
+    expect(usersAtStart[1].blogs.length).toEqual(helper.initialUsers[1].blogs.length)
+  },200000)
+
+})
+
+describe('blogs and users populate', () => {
+
+  test('blogs  show the users info', async () => {
+    const result = await api
+      .get('/api/blogs')
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+
+    const blogs = result.body
+    expect(blogs[0].user.username).toEqual(helper.initialBlogs[0].user.username)
+  },200000)
+
+  test('users show the blogs info', async () => {
+    const result = await api
+      .get('/api/users')
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+
+    const users = result.body
+    expect(users[1].blogs[0].title).toEqual(helper.initialUsers[1].blogs[0].title)
+  },200000)
+
 })
 
 describe('addition of a new user', () => {
@@ -39,7 +104,7 @@ describe('addition of a new user', () => {
 
     const usernames = usersAtEnd.map(u => u.username)
     expect(usernames).toContain(newUser.username)
-  })
+  },200000)
 
   test('creation fails with proper statuscode and message if username already taken', async () => {
     const usersAtStart = await helper.usersInDb()
@@ -60,7 +125,7 @@ describe('addition of a new user', () => {
 
     const usersAtEnd = await helper.usersInDb()
     expect(usersAtEnd).toEqual(usersAtStart)
-  })
+  },200000)
 
   test('creation fails if lacking password property', async () => {
     const usersAtStart = await helper.usersInDb()
@@ -80,7 +145,7 @@ describe('addition of a new user', () => {
 
     const usersAtEnd = await helper.usersInDb()
     expect(usersAtEnd).toEqual(usersAtStart)
-  })
+  },200000)
 
   test('creation fails if the length of password is shorter than 3', async () => {
     const usersAtStart = await helper.usersInDb()
@@ -101,7 +166,7 @@ describe('addition of a new user', () => {
 
     const usersAtEnd = await helper.usersInDb()
     expect(usersAtEnd).toEqual(usersAtStart)
-  })
+  },200000)
 
   test('creation fails if lacking username property', async () => {
     const usersAtStart = await helper.usersInDb()
@@ -121,7 +186,7 @@ describe('addition of a new user', () => {
 
     const usersAtEnd = await helper.usersInDb()
     expect(usersAtEnd).toEqual(usersAtStart)
-  })
+  },200000)
 
   test('creation fails if the length of usename is shorter than 3', async () => {
     const usersAtStart = await helper.usersInDb()
@@ -142,11 +207,238 @@ describe('addition of a new user', () => {
 
     const usersAtEnd = await helper.usersInDb()
     expect(usersAtEnd).toEqual(usersAtStart)
-  })
+  },200000)
+
+})
+
+describe('user login', () => {
+
+  test('user login with wrong password will fail', async () => {
+    const user = {
+      'username': 'root',
+      'password': 'mypassword'
+    }
+
+    const result = await api
+      .post('/api/login')
+      .send(user)
+      .expect(401)
+
+    expect(result.body.error).toContain('invalid username or password')
+
+  },200000)
+
+  test('user login with wrong usename will fail', async () => {
+    const user = {
+      'username': 'mluukkai_1',
+      'password': 'salainen'
+    }
+
+    const result = await api
+      .post('/api/login')
+      .send(user)
+      .expect(401)
+
+    expect(result.body.error).toContain('invalid username or password')
+
+  },200000)
+
+  test('user login with right username and password recieve token', async () => {
+    const user = {
+      'username': 'mluukkai',
+      'password': 'salainen'
+    }
+
+    const result = await api
+      .post('/api/login')
+      .send(user)
+      .expect(200)
+
+    expect(result.body.username).toEqual('mluukkai')
+    expect(result.body.token).toBeDefined()
+
+  },200000)
+})
+
+describe('when user have right token', () => {
+  const getToken = async () => {
+    const user = {
+      'username': 'mluukkai',
+      'password': 'salainen'
+    }
+    const result = await api
+      .post('/api/login')
+      .send(user)
+      .expect(200)
+    console.log(result.body.token)
+    return result.body.token
+  }
+  test('a valid blog can be added', async () => {
+    const token = await getToken()
+    const newBlog = {
+      title: 'Canonical string reduction',
+      author: 'Edsger W. Dijkstra',
+      url: 'http://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD808.html',
+      likes: 12,
+    }
+    await api
+      .post('/api/blogs')
+      .set('authorization', `Bearer ${token}`)
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
+
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
+
+    const blogsAfterMap = blogsAtEnd.map((r) => {
+      return ({
+        'title':r.title,
+        'author':r.author,
+        'url':r.url,
+        'likes':r.likes
+      })
+    })
+
+    expect(blogsAfterMap).toContainEqual(
+      newBlog
+    )
+  },200000)
+
+  test('if likes property is missing, it will default to the value 0', async () => {
+    const token = await getToken()
+    const newBlog = {
+      title: 'Canonical string reduction',
+      author: 'Edsger W. Dijkstra',
+      url: 'http://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD808.html',
+    }
+
+    await api
+      .post('/api/blogs')
+      .set('authorization', `Bearer ${token}`)
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
+
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
+
+    const blogsAfterMap = blogsAtEnd.map((r) => {
+      return ({
+        'title':r.title,
+        'author':r.author,
+        'url':r.url,
+        'likes':r.likes
+      })
+    })
+
+    expect(blogsAfterMap).toContainEqual(
+      {
+        ...newBlog,
+        'likes':0
+      }
+    )
+  },200000)
+
+  test('blog without title is not added', async () => {
+    const token = await getToken()
+    const newBlogNoTitle = {
+      'author': 'Wen',
+      'url':'https://www.wen.com',
+      'likes':100
+    }
+
+    await api
+      .post('/api/blogs')
+      .set('authorization', `Bearer ${token}`)
+      .send(newBlogNoTitle)
+      .expect(400)
+
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+  },200000)
+
+  test('blog without url is not added', async () => {
+    const token = await getToken()
+    const newBlogNoUrl = {
+      'title':'Study in Helsinki Open University',
+      'author': 'Wen',
+      'likes':100
+    }
+
+    await api
+      .post('/api/blogs')
+      .set('authorization', `Bearer ${token}`)
+      .send(newBlogNoUrl)
+      .expect(400)
+
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+  },200000)
 
 })
 
 
+/*
+describe('delete or updata a blog', () => {
+  test('a blog can be deleted with right token', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToDelete = blogsAtStart[0]
+
+    await api
+      .delete(`/api/blogs/${blogToDelete.id}`)
+      .expect(204)
+
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1)
+
+    const blogsAtEndMap = blogsAtEnd.map((r) => {
+      return ({
+        'title':r.title,
+        'author':r.author,
+        'url':r.url,
+        'likes':r.likes
+      })
+    })
+
+    expect(blogsAtEndMap).not.toContainEqual(
+      {
+        'title':blogToDelete.title,
+        'author':blogToDelete.author,
+        'url':blogToDelete.url,
+        'likes':blogToDelete.likes
+      }
+    )
+  },200000)
+
+  test('a blog can be update', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToUpdate = blogsAtStart[0]
+
+    const blogInUpdate = {
+      'title': blogToUpdate.title,
+      'author': blogToUpdate.author,
+      'url':'Unknown',
+      'likes':blogToUpdate.likes + 100
+    }
+
+    await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(blogInUpdate)
+      .expect(200)
+
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+    const blogAfterUpdate = blogsAtEnd[0]
+
+    expect(blogAfterUpdate.id).toBe(blogToUpdate.id)
+    expect(blogAfterUpdate.title).toBe(blogToUpdate.title)
+    expect(blogAfterUpdate.author).toBe(blogToUpdate.author)
+    expect(blogAfterUpdate.url).toBe('Unknown')
+    expect(blogAfterUpdate.likes).toBe(blogToUpdate.likes + 100)
+  },200000)
+})
+*/
 afterAll(async () => {
   await mongoose.connection.close()
 })
